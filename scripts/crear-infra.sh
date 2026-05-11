@@ -7,17 +7,17 @@ AMI_ID="ami-0c7217cdde317cfec"
 INSTANCE_TYPE="t3.micro"
 
 echo "=== 1. Validando o Creando VPC ==="
-VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=tienda-perritos-vpc" --query "Vpcs[0].VpcId" --output text)
+VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=tienda-perritos-vpc-new" --query "Vpcs[0].VpcId" --output text)
 if [ "$VPC_ID" == "None" ] || [ -z "$VPC_ID" ]; then
   VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query 'Vpc.VpcId' --output text)
-  aws ec2 create-tags --resources $VPC_ID --tags Key=Name,Value=tienda-perritos-vpc
+  aws ec2 create-tags --resources $VPC_ID --tags Key=Name,Value=tienda-perritos-vpc-new
   aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames "{\"Value\":true}"
 fi
 
-SUBNET_ID=$(aws ec2 describe-subnets --filters "Name=tag:Name,Values=tienda-public-subnet" --query "Subnets[0].SubnetId" --output text)
+SUBNET_ID=$(aws ec2 describe-subnets --filters "Name=tag:Name,Values=tienda-public-subnet-new" --query "Subnets[0].SubnetId" --output text)
 if [ "$SUBNET_ID" == "None" ] || [ -z "$SUBNET_ID" ]; then
   SUBNET_ID=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.1.0/24 --availability-zone ${REGION}a --query 'Subnet.SubnetId' --output text)
-  aws ec2 create-tags --resources $SUBNET_ID --tags Key=Name,Value=tienda-public-subnet
+  aws ec2 create-tags --resources $SUBNET_ID --tags Key=Name,Value=tienda-public-subnet-new
   
   IGW_ID=$(aws ec2 create-internet-gateway --query 'InternetGateway.InternetGatewayId' --output text)
   aws ec2 attach-internet-gateway --vpc-id $VPC_ID --internet-gateway-id $IGW_ID
