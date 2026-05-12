@@ -5,8 +5,6 @@
 // Determinar la URL base de la API según el host
 // frontend/app.js
 
-
-
 const API_BASE = "/api/productos";
 
 
