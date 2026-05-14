@@ -2,7 +2,7 @@ name: CI/CD Tienda Perritos - DB
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "deploy" ]
     paths:
       - "db/**"
 

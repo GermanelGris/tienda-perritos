@@ -2,7 +2,7 @@ name: CI/CD Tienda Perritos - Frontend
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "deploy" ]
     parent_paths:
       - "frontend/**"
 
