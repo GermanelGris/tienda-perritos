@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+
 REGION="us-east-1"
 # Asegúrate de que esta AMI sea la correcta para tu región (Ubuntu 22.04 suele ser ami-0c7217cdde317cfec en us-east-1)
 AMI_ID="ami-0c7217cdde317cfec" 
