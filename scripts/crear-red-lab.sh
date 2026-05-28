@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-PROJECT_NAME="red-lab"
+PROJECT_NAME="red-labs"
 REGION="us-east-1"
 
 echo "====================================="
