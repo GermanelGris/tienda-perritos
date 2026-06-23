@@ -22,33 +22,34 @@ jobs:
         aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
         aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Login en Amazon ECR (runner)
+    - name: Login en Amazon ECR
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Build imagen Backend y push a ECR
+    - name: Build y Push imagen Backend a ECR
       run: |
         cd backend
         docker build -t tienda-backend .
         docker tag tienda-backend:latest ${{ secrets.ECR_REPO_URL_BACKEND }}:latest
         docker push ${{ secrets.ECR_REPO_URL_BACKEND }}:latest
 
-    - name: Pausa de estabilización SSM
-      run: sleep 60
-
-    - name: Desplegar Backend vía SSM
+    - name: Descargar task definition actual
       run: |
-        aws ssm send-command \
-          --instance-ids ${{ secrets.EC2_BACKEND_INSTANCE_ID }} \
-          --document-name "AWS-RunShellScript" \
-          --comment "Actualizar tienda-backend desde ECR" \
-          --parameters '{"commands":[
-            "set -e",
-            "export PATH=$PATH:/usr/local/bin",
-            "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}",
-            "sudo docker pull ${{ secrets.ECR_REPO_URL_BACKEND }}:latest",
-            "sudo docker stop tienda-backend || true",
-            "sudo docker rm tienda-backend || true",
-            "sudo docker run -d --name tienda-backend -p 3001:3001 ${{ secrets.ECR_REPO_URL_BACKEND }}:latest"
-          ]}' \
-          --output text
-          
+        aws ecs describe-task-definition \
+          --task-definition tienda-backend-td \
+          --query taskDefinition > task-definition-backend.json
+
+    - name: Actualizar imagen en task definition
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition-backend.json
+        container-name: tienda-backend
+        image: ${{ secrets.ECR_REPO_URL_BACKEND }}:latest
+
+    - name: Deploy a ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: ${{ secrets.ECS_SERVICE_BACKEND }}
+        cluster: ${{ secrets.ECS_CLUSTER }}
+        wait-for-service-stability: true

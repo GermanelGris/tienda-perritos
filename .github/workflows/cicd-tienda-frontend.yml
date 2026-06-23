@@ -3,7 +3,7 @@ name: CI/CD Tienda Perritos - Frontend
 on:
   push:
     branches: [ "deploy" ]
-    parent_paths:
+    paths:
       - "frontend/**"
 
 jobs:
@@ -22,33 +22,34 @@ jobs:
         aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
         aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Login en Amazon ECR (runner)
+    - name: Login en Amazon ECR
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Build imagen Frontend y push a ECR
+    - name: Build y Push imagen Frontend a ECR
       run: |
         cd frontend
         docker build -t tienda-frontend .
         docker tag tienda-frontend:latest ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest
         docker push ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest
 
-    - name: Pausa de estabilización SSM
-      run: sleep 60
-
-    - name: Desplegar Frontend vía SSM
+    - name: Descargar task definition actual
       run: |
-        aws ssm send-command \
-          --instance-ids ${{ secrets.EC2_FRONTEND_INSTANCE_ID }} \
-          --document-name "AWS-RunShellScript" \
-          --comment "Actualizar tienda-frontend desde ECR" \
-          --parameters '{"commands":[
-            "set -e",
-            "export PATH=$PATH:/usr/local/bin",
-            "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}",
-            "sudo docker pull ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest",
-            "sudo docker stop tienda-frontend || true",
-            "sudo docker rm tienda-frontend || true",
-            "sudo docker run -d --name tienda-frontend -p 80:80 ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest"
-          ]}' \
-          --output text
-          
+        aws ecs describe-task-definition \
+          --task-definition tienda-frontend-td \
+          --query taskDefinition > task-definition-frontend.json
+
+    - name: Actualizar imagen en task definition
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition-frontend.json
+        container-name: tienda-frontend
+        image: ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest
+
+    - name: Deploy a ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: ${{ secrets.ECS_SERVICE_FRONTEND }}
+        cluster: ${{ secrets.ECS_CLUSTER }}
+        wait-for-service-stability: true
