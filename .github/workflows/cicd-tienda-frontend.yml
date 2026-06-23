@@ -36,7 +36,16 @@ jobs:
       run: |
         aws ecs describe-task-definition \
           --task-definition tienda-frontend-td \
-          --query taskDefinition > task-definition-frontend.json
+          --query taskDefinition > task-definition-raw.json
+        
+        cat task-definition-raw.json | python3 -c "
+        import json, sys
+        td = json.load(sys.stdin)
+        for key in ['taskDefinitionArn','revision','status','requiresAttributes',
+                    'compatibilities','registeredAt','registeredBy','enableFaultInjection']:
+            td.pop(key, None)
+        print(json.dumps(td))
+        " > task-definition-frontend.json
 
     - name: Actualizar imagen en task definition
       id: task-def
