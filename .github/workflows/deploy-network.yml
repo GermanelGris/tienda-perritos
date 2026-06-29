@@ -1,6 +1,5 @@
 name: Deploy Red AWS
 
-
 on:
   workflow_dispatch:
 
