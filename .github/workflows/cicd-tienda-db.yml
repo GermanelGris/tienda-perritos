@@ -1,13 +1,14 @@
-name: CI/CD Tienda Perritos - DB
+name: CI/CD Tienda Perritos - DB (EKS)
 
 on:
   push:
     branches: [ "deploy" ]
     paths:
       - "db/**"
+      - "k8s/db.yml" # Detecta cambios en el manifiesto de la BD
 
 jobs:
-  build-push-db:
+  build-push-deploy-db:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,3 +32,16 @@ jobs:
         docker build -t tienda-db .
         docker tag tienda-db:latest ${{ secrets.ECR_REPO_URL_DB }}:latest
         docker push ${{ secrets.ECR_REPO_URL_DB }}:latest
+
+    - name: Actualizar Kubeconfig para EKS
+      run: |
+        aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name pruebaEKS
+
+    - name: Deploy a Amazon EKS
+      run: |
+        # Aplica el manifiesto de la base de datos (asegúrate de que la ruta coincida)
+        kubectl apply -f k8s/db.yml 
+        
+        # Reinicia el pod para capturar la nueva imagen 'latest'
+        kubectl rollout restart deployment/tienda-db -n tienda
+        kubectl rollout status deployment/tienda-db -n tienda

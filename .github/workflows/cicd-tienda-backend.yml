@@ -1,10 +1,11 @@
-name: CI/CD Tienda Perritos - Backend
+name: CI/CD Tienda Perritos - Backend (EKS)
 
 on:
   push:
     branches: [ "deploy" ]
     paths:
       - "backend/**"
+      - "k8s/**" # Detecta cambios si actualizas los archivos YAML
 
 jobs:
   build-push-deploy-backend:
@@ -32,27 +33,15 @@ jobs:
         docker tag tienda-backend:latest ${{ secrets.ECR_REPO_URL_BACKEND }}:latest
         docker push ${{ secrets.ECR_REPO_URL_BACKEND }}:latest
 
-    - name: Descargar task definition actual
+    - name: Actualizar Kubeconfig para EKS
       run: |
-        aws ecs describe-task-definition \
-          --task-definition tienda-backend-td \
-          --query taskDefinition \
-          --output json | \
-          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .enableFaultInjection)' \
-          > task-definition-backend.json
+        aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name pruebaEKS
 
-    - name: Actualizar imagen en task definition
-      id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: task-definition-backend.json
-        container-name: tienda-backend
-        image: ${{ secrets.ECR_REPO_URL_BACKEND }}:latest
-
-    - name: Deploy a ECS
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: ${{ secrets.ECS_SERVICE_BACKEND }}
-        cluster: ${{ secrets.ECS_CLUSTER }}
-        wait-for-service-stability: true
+    - name: Deploy a Amazon EKS
+      run: |
+        # Asumiendo que tus archivos YAML están en una carpeta llamada 'k8s'
+        kubectl apply -f k8s/frontend.yml # Este es el archivo que subiste con el Deployment del backend
+        
+        # Fuerza el reinicio de los pods para asegurar que tomen la imagen 'latest' recién subida
+        kubectl rollout restart deployment/tienda-backend -n tienda
+        kubectl rollout status deployment/tienda-backend -n tienda
