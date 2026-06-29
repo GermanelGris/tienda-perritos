@@ -13,6 +13,8 @@ spec:
       labels:
         app: tienda-backend
     spec:
+      imagePullSecrets:
+        - name: ecr-secret
       containers:
         - name: tienda-backend
           image: 884162705864.dkr.ecr.us-east-1.amazonaws.com/tienda-backend:latest
