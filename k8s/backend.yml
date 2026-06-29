@@ -31,6 +31,13 @@ spec:
               value: "tienda_perritos"
             - name: DB_PORT
               value: "3306"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service
